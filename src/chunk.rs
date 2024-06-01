@@ -1,4 +1,4 @@
-use std::{fmt::{Display, *}, result::Result, str::FromStr, error::Error, string::FromUtf8Error};
+use std::{fmt::Display, result::Result, string::FromUtf8Error};
 
 use crate::chunk_type::ChunkType;
 
@@ -24,7 +24,13 @@ impl TryFrom<&[u8]> for Chunk {
             }
             let mut chunk_type_bytes: [u8; 4] = [0; 4];
             chunk_type_bytes.copy_from_slice(&value[4..8]);
+
             let chunk_type = ChunkType::try_from(chunk_type_bytes).unwrap();
+
+            if !chunk_type.is_valid() {
+                return Err("The chunk type is invalid");
+            }
+
             let chunk_data = &value[8 .. 8 + (data_length as usize)];
             let crc_bytes : [u8; 4] = value[data_length as usize + 8 .. ][0..4].try_into().unwrap();
             let crc = u32::from_be_bytes(crc_bytes);
@@ -94,7 +100,19 @@ impl Chunk {
     }
 
     pub fn as_bytes(&self) -> Vec<u8> {
-        self.chunk_data.to_vec()
+        let mut bytes : Vec<u8> = Vec::new();
+
+        let mut length_bytes = self.length.to_be_bytes().to_vec();
+        let mut chunk_type_bytes = self.chunk_type.bytes().to_vec();
+        let mut chunk_data_bytes = self.chunk_data.to_vec().to_vec();
+        let mut crc_bytes = self.crc.to_be_bytes().to_vec();
+
+        bytes.append(& mut length_bytes);
+        bytes.append(& mut chunk_type_bytes);
+        bytes.append(& mut chunk_data_bytes);
+        bytes.append(& mut crc_bytes);
+
+        bytes
     }
 
 }
